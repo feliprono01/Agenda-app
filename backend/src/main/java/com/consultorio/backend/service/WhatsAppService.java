@@ -7,12 +7,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -77,5 +79,15 @@ public class WhatsAppService {
             log.error("Error enviando recordatorio al turno {}: {}", turno.getId(), e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Versión asíncrona para llamar desde TurnoService al crear un turno.
+     * Spring ejecuta este método en el pool de hilos gestionado (@EnableAsync).
+     */
+    @Async
+    public CompletableFuture<Boolean> enviarRecordatorioAsync(Turno turno) {
+        boolean resultado = enviarRecordatorio(turno);
+        return CompletableFuture.completedFuture(resultado);
     }
 }

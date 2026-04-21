@@ -19,6 +19,12 @@ backend/.mvn/
 *.war
 backend/src/main/resources/application-secret.properties
 
+# Secretos de desarrollo local — NUNCA commitear
+backend/src/main/resources/application-local.properties
+.env
+.env.local
+backend/.env
+
 # IDEs
 .idea/
 .vscode/

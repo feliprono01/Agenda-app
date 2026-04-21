@@ -7,7 +7,9 @@ import com.consultorio.backend.repository.PacienteRepository;
 import com.consultorio.backend.repository.TurnoRepository;
 import com.consultorio.backend.entity.Turno;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,16 +34,18 @@ public class PacienteService {
     }
 
     public PacienteResponse updatePaciente(Long id, PacienteRequest request) {
-        Paciente paciente = pacienteRepository.findById(id).orElseThrow();
+        Paciente paciente = pacienteRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Paciente no encontrado con id: " + id));
         updatePacienteEntity(paciente, request);
         return mapToResponse(pacienteRepository.save(paciente));
     }
 
     public void deletePaciente(Long id) {
-        List<Turno> turnosAsociados = turnoRepository.findAll().stream()
-                .filter(t -> t.getPaciente().getId().equals(id))
-                .collect(Collectors.toList());
-        turnoRepository.deleteAll(turnosAsociados);
+        pacienteRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Paciente no encontrado con id: " + id));
+        turnoRepository.deleteByPacienteId(id);
         pacienteRepository.deleteById(id);
     }
 

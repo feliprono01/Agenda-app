@@ -3,6 +3,7 @@ package com.consultorio.backend.controller;
 import com.consultorio.backend.dto.TurnoRequest;
 import com.consultorio.backend.dto.TurnoResponse;
 import com.consultorio.backend.service.TurnoService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,13 +25,13 @@ public class TurnoController {
     }
 
     @PostMapping
-    public ResponseEntity<TurnoResponse> crearTurno(@RequestBody TurnoRequest request) {
+    public ResponseEntity<TurnoResponse> crearTurno(@Valid @RequestBody TurnoRequest request) {
         return ResponseEntity.ok(turnoService.crearTurno(request));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<TurnoResponse> actualizarTurno(@PathVariable Long id,
-                                                         @RequestBody TurnoRequest request) {
+                                                         @Valid @RequestBody TurnoRequest request) {
         return ResponseEntity.ok(turnoService.actualizarTurno(id, request));
     }
 

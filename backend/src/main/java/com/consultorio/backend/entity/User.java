@@ -23,5 +23,10 @@ public class User {
 
     private String nombre;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.ROLE_MEDICO;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

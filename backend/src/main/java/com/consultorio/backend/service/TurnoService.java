@@ -8,7 +8,9 @@ import com.consultorio.backend.entity.Paciente;
 import com.consultorio.backend.repository.PacienteRepository;
 import com.consultorio.backend.repository.TurnoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,7 +35,9 @@ public class TurnoService {
     }
 
     public TurnoResponse crearTurno(TurnoRequest request) {
-        Paciente paciente = pacienteRepository.findById(request.pacienteId()).orElseThrow();
+        Paciente paciente = pacienteRepository.findById(request.pacienteId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Paciente no encontrado con id: " + request.pacienteId()));
         Turno turno = new Turno();
         turno.setPaciente(paciente);
         turno.setFechaHora(request.fechaHora());
@@ -42,19 +46,21 @@ public class TurnoService {
         turno.setEstado(EstadoTurno.PENDIENTE);
         
         Turno turnoGuardado = turnoRepository.save(turno);
-        
-        // Disparar mensaje de WhatsApp asincrónicamente o en un hilo separado
-        new Thread(() -> {
-            whatsappService.enviarRecordatorio(turnoGuardado);
-        }).start();
+
+        // Enviar mensaje de WhatsApp en un hilo del pool gestionado por Spring (@Async)
+        whatsappService.enviarRecordatorioAsync(turnoGuardado);
 
         return mapToResponse(turnoGuardado);
     }
 
     public TurnoResponse actualizarTurno(Long id, TurnoRequest request) {
-        Turno turno = turnoRepository.findById(id).orElseThrow();
+        Turno turno = turnoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Turno no encontrado con id: " + id));
         if (request.pacienteId() != null && !turno.getPaciente().getId().equals(request.pacienteId())) {
-            Paciente paciente = pacienteRepository.findById(request.pacienteId()).orElseThrow();
+            Paciente paciente = pacienteRepository.findById(request.pacienteId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Paciente no encontrado con id: " + request.pacienteId()));
             turno.setPaciente(paciente);
         }
         if (request.fechaHora() != null) turno.setFechaHora(request.fechaHora());
@@ -64,7 +70,9 @@ public class TurnoService {
     }
 
     public void cancelarTurno(Long id) {
-        Turno turno = turnoRepository.findById(id).orElseThrow();
+        Turno turno = turnoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Turno no encontrado con id: " + id));
         turno.setEstado(EstadoTurno.CANCELADO);
         turnoRepository.save(turno);
     }
