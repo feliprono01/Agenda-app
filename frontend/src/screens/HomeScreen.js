@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, StatusBar, Platform } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import { theme } from '../constants/theme';
@@ -17,23 +18,14 @@ LocaleConfig.locales['es'] = {
 LocaleConfig.defaultLocale = 'es';
 
 export default function HomeScreen({ navigation }) {
-    const { user, logout } = useAuth();
+    const { user, logout, isAdmin } = useAuth();
     const [turnos, setTurnos] = useState([]);
     const [loading, setLoading] = useState(true);
-    
-    // Obtener fecha actual en formato YYYY-MM-DD
-    const getToday = () => {
-        const d = new Date();
-        return d.toISOString().split('T')[0];
-    };
-    
+
+    const getToday = () => new Date().toISOString().split('T')[0];
     const [selectedDate, setSelectedDate] = useState(getToday());
 
-    useEffect(() => {
-        cargarTurnos();
-    }, [selectedDate]);
-
-    const cargarTurnos = async () => {
+    const cargarTurnos = useCallback(async () => {
         setLoading(true);
         try {
             const response = await apiClient.get(`/turnos?desde=${selectedDate}&hasta=${selectedDate}`);
@@ -43,14 +35,16 @@ export default function HomeScreen({ navigation }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedDate]);
+
+    // Recarga automática al volver a esta pantalla (reemplaza onGoBack)
+    useFocusEffect(cargarTurnos);
 
     const getStatusChip = (estado) => {
         let color = theme.colors.textLight;
         let bg = '#F1F5F9';
         if(estado === 'CONFIRMADO') { color = theme.colors.cta; bg = '#D1FAE5'; }
         if(estado === 'CANCELADO') { color = theme.colors.error; bg = '#FEE2E2'; }
-        
         return (
             <View style={[styles.statusChip, { backgroundColor: bg }]}>
                 <Text style={[styles.statusText, { color }]}>{estado}</Text>
@@ -61,22 +55,30 @@ export default function HomeScreen({ navigation }) {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
-            
+
             {/* Header */}
             <View style={styles.header}>
                 <View>
                     <Text style={styles.greeting}>Hola, Bienvenido</Text>
                     <Text style={styles.userName}>Mi Agenda</Text>
                 </View>
-                <View style={{ flexDirection: 'row' }}>
-                    <TouchableOpacity 
-                        style={[styles.logoutBtn, { backgroundColor: theme.colors.cta + '20', marginRight: 12 }]} 
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {isAdmin && (
+                        <TouchableOpacity
+                            style={[styles.headerBtn, { backgroundColor: '#EDE9FE' }]}
+                            onPress={() => navigation.navigate('Admin')}
+                        >
+                            <FontAwesome5 name="user-cog" size={18} color="#7C3AED" />
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                        style={[styles.headerBtn, { backgroundColor: theme.colors.cta + '20' }]}
                         onPress={() => navigation.navigate('Pacientes')}
                     >
-                        <FontAwesome5 name="users" size={20} color={theme.colors.cta} />
+                        <FontAwesome5 name="users" size={18} color={theme.colors.cta} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-                        <FontAwesome5 name="sign-out-alt" size={20} color={theme.colors.error} />
+                    <TouchableOpacity style={[styles.headerBtn, { backgroundColor: '#FEE2E2' }]} onPress={logout}>
+                        <FontAwesome5 name="sign-out-alt" size={18} color={theme.colors.error} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -99,9 +101,7 @@ export default function HomeScreen({ navigation }) {
                     textDayFontFamily: theme.fonts.medium,
                     textDayHeaderFontFamily: theme.fonts.bold,
                 }}
-                onDayPress={day => {
-                    setSelectedDate(day.dateString);
-                }}
+                onDayPress={day => setSelectedDate(day.dateString)}
                 markedDates={{
                     [selectedDate]: { selected: true, disableTouchEvent: true, selectedDotColor: 'orange' }
                 }}
@@ -127,7 +127,11 @@ export default function HomeScreen({ navigation }) {
                         </View>
                     }
                     renderItem={({ item }) => (
-                        <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('DetalleTurno', { turno: item, onGoBack: cargarTurnos })}>
+                        <TouchableOpacity
+                            style={styles.card}
+                            activeOpacity={0.7}
+                            onPress={() => navigation.navigate('DetalleTurno', { turno: item })}
+                        >
                             <View style={styles.timeBox}>
                                 <Text style={styles.timeText}>{item.fechaHora.split('T')[1].substring(0,5)}</Text>
                             </View>
@@ -141,10 +145,10 @@ export default function HomeScreen({ navigation }) {
                 />
             )}
 
-            {/* Floating Action Button (FAB) */}
-            <TouchableOpacity 
-                style={styles.fab} 
-                onPress={() => navigation.navigate('NuevoTurno', { onGoBack: cargarTurnos })}
+            {/* FAB */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => navigation.navigate('NuevoTurno')}
                 activeOpacity={0.8}
             >
                 <FontAwesome5 name="plus" size={24} color={theme.colors.surface} />
@@ -152,6 +156,7 @@ export default function HomeScreen({ navigation }) {
         </View>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
@@ -166,9 +171,8 @@ const styles = StyleSheet.create({
     },
     greeting: { fontSize: 16, color: theme.colors.textLight, fontFamily: theme.fonts.medium },
     userName: { fontSize: 24, color: theme.colors.text, fontFamily: theme.fonts.bold },
-    logoutBtn: {
+    headerBtn: {
         padding: 10,
-        backgroundColor: '#FEE2E2',
         borderRadius: theme.radii.round,
     },
     calendar: {

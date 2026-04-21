@@ -7,6 +7,7 @@ import NuevoTurnoScreen from '../screens/NuevoTurnoScreen';
 import DetalleTurnoScreen from '../screens/DetalleTurnoScreen';
 import PacientesScreen from '../screens/PacientesScreen';
 import NuevoPacienteScreen from '../screens/NuevoPacienteScreen';
+import AdminScreen from '../screens/AdminScreen';
 import { theme } from '../constants/theme';
 
 const Stack = createNativeStackNavigator();
@@ -30,6 +31,7 @@ export default function AppNavigator() {
                         <Stack.Screen name="DetalleTurno" component={DetalleTurnoScreen} />
                         <Stack.Screen name="Pacientes" component={PacientesScreen} />
                         <Stack.Screen name="NuevoPaciente" component={NuevoPacienteScreen} />
+                        <Stack.Screen name="Admin" component={AdminScreen} />
                     </>
                 ) : (
                     <Stack.Screen name="Login" component={LoginScreen} />
