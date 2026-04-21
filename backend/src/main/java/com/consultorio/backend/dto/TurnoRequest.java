@@ -8,7 +8,6 @@ public record TurnoRequest(
         Long pacienteId,
 
         @NotNull(message = "La fecha y hora son obligatorias")
-        @Future(message = "El turno debe ser en una fecha futura")
         LocalDateTime fechaHora,
 
         @Min(value = 15, message = "La duración mínima es de 15 minutos")

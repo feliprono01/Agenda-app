@@ -32,7 +32,7 @@
       "expo-font"
     ],
     "extra": {
-      "apiUrl": "http://10.0.2.2:8080/api"
+      "apiUrl": "http://192.168.0.85:8080/api"
     }
   }
 }

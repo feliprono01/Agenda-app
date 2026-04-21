@@ -61,16 +61,18 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // En producción, definir ALLOWED_ORIGINS=https://tu-dominio.com
-        // En desarrollo, acepta todos los orígenes locales
-        String allowedOrigins = System.getenv().getOrDefault(
-            "ALLOWED_ORIGINS",
-            "http://localhost:8081,http://localhost:19006,http://10.0.2.2:8080"
-        );
-        configuration.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
+        // Permite todos los orígenes en desarrollo — restringir en prod con ALLOWED_ORIGINS
+        String allowedOrigins = System.getenv().getOrDefault("ALLOWED_ORIGINS", "*");
+        if ("*".equals(allowedOrigins)) {
+            configuration.setAllowedOriginPatterns(List.of("*"));
+        } else {
+            configuration.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
+        }
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
+        // allowCredentials solo necesario si usás cookies; con JWT en headers no hace falta
+        configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
