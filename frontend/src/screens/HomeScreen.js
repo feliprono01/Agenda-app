@@ -37,8 +37,10 @@ export default function HomeScreen({ navigation }) {
         }
     }, [selectedDate]);
 
-    // Recarga automática al volver a esta pantalla (reemplaza onGoBack)
-    useFocusEffect(cargarTurnos);
+    // Recarga al volver a la pantalla — wrapper sync requerido por useFocusEffect
+    useFocusEffect(
+        useCallback(() => { cargarTurnos(); }, [cargarTurnos])
+    );
 
     const getStatusChip = (estado) => {
         let color = theme.colors.textLight;

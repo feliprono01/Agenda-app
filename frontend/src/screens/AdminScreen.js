@@ -38,7 +38,9 @@ export default function AdminScreen({ navigation }) {
         }
     }, []);
 
-    useFocusEffect(cargarUsuarios);
+    useFocusEffect(
+        useCallback(() => { cargarUsuarios(); }, [cargarUsuarios])
+    );
 
     const abrirNuevo = () => {
         setEditando(null);
