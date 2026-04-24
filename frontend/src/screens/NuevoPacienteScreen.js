@@ -21,10 +21,13 @@ export default function NuevoPacienteScreen({ navigation, route }) {
 
         setLoading(true);
         try {
+            // Normalizar teléfono: quitar espacios, guiones y paréntesis (conservar el +)
+            const telefonoNormalizado = telefono.replace(/[\s\-().]/g, '');
+
             await apiClient.post('/pacientes', {
                 nombre,
                 apellido,
-                telefono,
+                telefono: telefonoNormalizado,
                 email,
                 dni
             });

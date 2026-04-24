@@ -77,6 +77,18 @@ public class TurnoService {
         turnoRepository.save(turno);
     }
 
+    public TurnoResponse confirmarTurno(Long id) {
+        Turno turno = turnoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Turno no encontrado con id: " + id));
+        if (turno.getEstado() == EstadoTurno.CANCELADO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "No se puede confirmar un turno cancelado");
+        }
+        turno.setEstado(EstadoTurno.CONFIRMADO);
+        return mapToResponse(turnoRepository.save(turno));
+    }
+
     private TurnoResponse mapToResponse(Turno t) {
         return new TurnoResponse(
                 t.getId(),

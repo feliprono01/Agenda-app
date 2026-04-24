@@ -34,9 +34,18 @@ export default function NuevoTurnoScreen({ navigation, route }) {
             return Alert.alert('Aviso', 'Por favor, completá todos los campos y selecciona un paciente.');
         }
 
+        // Validar que el turno no sea en el pasado
+        const fechaHoraFormat = `${fecha}T${hora}:00`;
+        const fechaHoraTurno = new Date(fechaHoraFormat);
+        if (fechaHoraTurno <= new Date()) {
+            return Alert.alert(
+                'Horario inválido',
+                'No podés agendar turnos para un horario que ya pasó. Seleccioná una hora futura.'
+            );
+        }
+
         setLoading(true);
         try {
-            const fechaHoraFormat = `${fecha}T${hora}:00`;
             await apiClient.post('/turnos', {
                 pacienteId: pacienteSeleccionado.id,
                 fechaHora: fechaHoraFormat,
@@ -44,7 +53,6 @@ export default function NuevoTurnoScreen({ navigation, route }) {
                 motivo
             });
             Alert.alert('Éxito', 'Turno agendado correctamente');
-            if (onGoBack) onGoBack();
             navigation.goBack();
         } catch (e) {
             Alert.alert('Error', 'No se pudo crear el turno.');

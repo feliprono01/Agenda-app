@@ -13,7 +13,7 @@ public record PacienteRequest(
         String apellido,
 
         @NotBlank(message = "El teléfono es obligatorio")
-        @Pattern(regexp = "^\\d{10,15}$", message = "El teléfono debe tener entre 10 y 15 dígitos sin espacios ni símbolos")
+        @Pattern(regexp = "^\\+?\\d{7,15}$", message = "El teléfono debe tener entre 7 y 15 dígitos (podés incluir el + del código de país)")
         String telefono,
 
         @Email(message = "El email no tiene un formato válido")

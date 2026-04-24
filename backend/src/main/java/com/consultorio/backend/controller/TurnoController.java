@@ -35,6 +35,11 @@ public class TurnoController {
         return ResponseEntity.ok(turnoService.actualizarTurno(id, request));
     }
 
+    @PatchMapping("/{id}/confirmar")
+    public ResponseEntity<TurnoResponse> confirmarTurno(@PathVariable Long id) {
+        return ResponseEntity.ok(turnoService.confirmarTurno(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancelarTurno(@PathVariable Long id) {
         turnoService.cancelarTurno(id);
