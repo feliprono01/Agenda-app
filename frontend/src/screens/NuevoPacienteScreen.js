@@ -5,13 +5,14 @@ import { theme } from '../constants/theme';
 import { FontAwesome5 } from '@expo/vector-icons';
 
 export default function NuevoPacienteScreen({ navigation, route }) {
-    const { onGoBack } = route.params || {};
+    const pacienteEditar = route.params?.paciente || null;
+    const esEdicion = !!pacienteEditar;
 
-    const [nombre, setNombre] = useState('');
-    const [apellido, setApellido] = useState('');
-    const [telefono, setTelefono] = useState('');
-    const [email, setEmail] = useState('');
-    const [dni, setDni] = useState('');
+    const [nombre, setNombre] = useState(pacienteEditar?.nombre || '');
+    const [apellido, setApellido] = useState(pacienteEditar?.apellido || '');
+    const [telefono, setTelefono] = useState(pacienteEditar?.telefono || '');
+    const [email, setEmail] = useState(pacienteEditar?.email || '');
+    const [dni, setDni] = useState(pacienteEditar?.dni || '');
     const [loading, setLoading] = useState(false);
 
     const handleGuardar = async () => {
@@ -21,21 +22,19 @@ export default function NuevoPacienteScreen({ navigation, route }) {
 
         setLoading(true);
         try {
-            // Normalizar teléfono: quitar espacios, guiones y paréntesis (conservar el +)
             const telefonoNormalizado = telefono.replace(/[\s\-().]/g, '');
+            const payload = { nombre, apellido, telefono: telefonoNormalizado, email, dni };
 
-            await apiClient.post('/pacientes', {
-                nombre,
-                apellido,
-                telefono: telefonoNormalizado,
-                email,
-                dni
-            });
-            Alert.alert('Éxito', 'Paciente registrado correctamente');
-            if (onGoBack) onGoBack();
+            if (esEdicion) {
+                await apiClient.put(`/pacientes/${pacienteEditar.id}`, payload);
+                Alert.alert('Éxito', 'Paciente actualizado correctamente');
+            } else {
+                await apiClient.post('/pacientes', payload);
+                Alert.alert('Éxito', 'Paciente registrado correctamente');
+            }
             navigation.goBack();
         } catch (e) {
-            Alert.alert('Error', 'No se pudo guardar el paciente.');
+            Alert.alert('Error', esEdicion ? 'No se pudo actualizar el paciente.' : 'No se pudo guardar el paciente.');
         } finally {
             setLoading(false);
         }
@@ -52,7 +51,7 @@ export default function NuevoPacienteScreen({ navigation, route }) {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                         <FontAwesome5 name="arrow-left" size={20} color={theme.colors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Nuevo Paciente</Text>
+                    <Text style={styles.title}>{esEdicion ? 'Editar Paciente' : 'Nuevo Paciente'}</Text>
                     <View style={{ width: 20 }} />
                 </View>
 
@@ -125,8 +124,8 @@ export default function NuevoPacienteScreen({ navigation, route }) {
                         />
                     </View>
                     
-                    <TouchableOpacity 
-                        style={[styles.btn, loading && styles.btnDisabled]} 
+                    <TouchableOpacity
+                        style={[styles.btn, loading && styles.btnDisabled]}
                         onPress={handleGuardar}
                         disabled={loading}
                     >
@@ -134,8 +133,13 @@ export default function NuevoPacienteScreen({ navigation, route }) {
                             <ActivityIndicator color={theme.colors.surface} />
                         ) : (
                             <>
-                                <FontAwesome5 name="user-plus" size={18} color={theme.colors.surface} style={{ marginRight: 8 }} />
-                                <Text style={styles.btnText}>Guardar Paciente</Text>
+                                <FontAwesome5
+                                    name={esEdicion ? 'save' : 'user-plus'}
+                                    size={18}
+                                    color={theme.colors.surface}
+                                    style={{ marginRight: 8 }}
+                                />
+                                <Text style={styles.btnText}>{esEdicion ? 'Guardar Cambios' : 'Guardar Paciente'}</Text>
                             </>
                         )}
                     </TouchableOpacity>

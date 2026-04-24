@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../api/apiClient';
 import { theme } from '../constants/theme';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -8,11 +9,7 @@ export default function PacientesScreen({ navigation }) {
     const [pacientes, setPacientes] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        cargarPacientes();
-    }, []);
-
-    const cargarPacientes = async () => {
+    const cargarPacientes = useCallback(async () => {
         setLoading(true);
         try {
             const { data } = await apiClient.get('/pacientes');
@@ -22,6 +19,13 @@ export default function PacientesScreen({ navigation }) {
         } finally {
             setLoading(false);
         }
+    }, []);
+
+    // Recarga automática al volver de NuevoPaciente (crear o editar)
+    useFocusEffect(useCallback(() => { cargarPacientes(); }, [cargarPacientes]));
+
+    const editarPaciente = (paciente) => {
+        navigation.navigate('NuevoPaciente', { paciente });
     };
 
     const eliminarPaciente = (id) => {
@@ -30,33 +34,22 @@ export default function PacientesScreen({ navigation }) {
                 await apiClient.delete(`/pacientes/${id}`);
                 cargarPacientes();
             } catch (e) {
-                if (Platform.OS === 'web') {
-                    window.alert("No se pudo eliminar el paciente.");
-                } else {
-                    Alert.alert("Error", "No se pudo eliminar el paciente.");
-                }
+                Alert.alert('Error', 'No se pudo eliminar el paciente.');
             }
         };
 
-        if (Platform.OS === 'web') {
-            if (window.confirm("¿Estás seguro que deseas eliminar este paciente de la base de datos? Se perderá su información de contacto.")) {
-                executeDelete();
-            }
-        } else {
-            Alert.alert(
-                "Eliminar Paciente",
-                "¿Estás seguro que deseas eliminar este paciente de la base de datos? Se perderá su información de contacto.",
-                [
-                    { text: "Cancelar", style: "cancel" },
-                    { text: "Eliminar", style: "destructive", onPress: executeDelete }
-                ]
-            );
-        }
+        Alert.alert(
+            'Eliminar Paciente',
+            '¿Seguro que querés eliminar este paciente? Se borrarán también sus turnos.',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Eliminar', style: 'destructive', onPress: executeDelete }
+            ]
+        );
     };
 
-    const getInitials = (nombre, apellido) => {
-        return `${nombre?.charAt(0) || ''}${apellido?.charAt(0) || ''}`.toUpperCase();
-    };
+    const getInitials = (nombre, apellido) =>
+        `${nombre?.charAt(0) || ''}${apellido?.charAt(0) || ''}`.toUpperCase();
 
     return (
         <View style={styles.container}>
@@ -88,40 +81,55 @@ export default function PacientesScreen({ navigation }) {
                         </View>
                     }
                     renderItem={({ item }) => (
-                        <TouchableOpacity style={styles.card} activeOpacity={0.7}>
+                        <View style={styles.card}>
                             <View style={styles.avatar}>
                                 <Text style={styles.avatarText}>{getInitials(item.nombre, item.apellido)}</Text>
                             </View>
-                            
+
                             <View style={styles.cardInfo}>
                                 <Text style={styles.nombre}>{item.nombre} {item.apellido}</Text>
-                                
+
                                 <View style={styles.infoRow}>
                                     <FontAwesome5 name="phone" size={12} color={theme.colors.textLight} style={styles.icon} />
                                     <Text style={styles.detalle}>{item.telefono || 'Sin teléfono'}</Text>
                                 </View>
-                                
+
                                 <View style={styles.infoRow}>
                                     <FontAwesome5 name="envelope" size={12} color={theme.colors.textLight} style={styles.icon} />
                                     <Text style={styles.detalle}>{item.email || 'Sin email'}</Text>
                                 </View>
+
+                                {item.dni ? (
+                                    <View style={styles.infoRow}>
+                                        <FontAwesome5 name="id-card" size={12} color={theme.colors.textLight} style={styles.icon} />
+                                        <Text style={styles.detalle}>DNI {item.dni}</Text>
+                                    </View>
+                                ) : null}
                             </View>
 
-                            <TouchableOpacity 
-                                style={{ padding: 10 }}
-                                onPress={() => eliminarPaciente(item.id)}
-                            >
-                                <FontAwesome5 name="trash-alt" size={18} color={theme.colors.error} />
-                            </TouchableOpacity>
-                        </TouchableOpacity>
+                            {/* Acciones */}
+                            <View style={styles.actions}>
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, { backgroundColor: '#EFF6FF' }]}
+                                    onPress={() => editarPaciente(item)}
+                                >
+                                    <FontAwesome5 name="edit" size={14} color="#3B82F6" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, { backgroundColor: '#FEF2F2', marginTop: 6 }]}
+                                    onPress={() => eliminarPaciente(item.id)}
+                                >
+                                    <FontAwesome5 name="trash-alt" size={14} color={theme.colors.error} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
                     )}
                 />
             )}
 
-            {/* Floating Action Button (FAB) */}
-            <TouchableOpacity 
-                style={styles.fab} 
-                onPress={() => navigation.navigate('NuevoPaciente', { onGoBack: cargarPacientes })}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => navigation.navigate('NuevoPaciente')}
                 activeOpacity={0.8}
             >
                 <FontAwesome5 name="user-plus" size={24} color={theme.colors.surface} />
@@ -134,7 +142,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
     header: {
         paddingHorizontal: theme.spacing.l,
-        paddingTop: 40,
+        paddingTop: Platform.OS === 'ios' ? 50 : 20,
         paddingBottom: theme.spacing.m,
         backgroundColor: theme.colors.surface,
         borderBottomWidth: 1,
@@ -146,11 +154,11 @@ const styles = StyleSheet.create({
     listContent: { padding: theme.spacing.m, paddingBottom: 100 },
     emptyContainer: { alignItems: 'center', marginTop: 60 },
     emptyText: { marginTop: theme.spacing.m, color: theme.colors.textLight, fontFamily: theme.fonts.medium, fontSize: 16 },
-    card: { 
+    card: {
         flexDirection: 'row',
-        backgroundColor: theme.colors.surface, 
-        padding: theme.spacing.m, 
-        borderRadius: theme.radii.m, 
+        backgroundColor: theme.colors.surface,
+        padding: theme.spacing.m,
+        borderRadius: theme.radii.m,
         marginBottom: theme.spacing.m,
         alignItems: 'center',
         elevation: 2,
@@ -160,8 +168,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
     },
     avatar: {
-        width: 50,
-        height: 50,
+        width: 50, height: 50,
         borderRadius: 25,
         backgroundColor: theme.colors.primary + '20',
         justifyContent: 'center',
@@ -170,49 +177,24 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: theme.colors.primary + '40',
     },
-    avatarText: {
-        fontSize: 18,
-        color: theme.colors.primary,
-        fontFamily: theme.fonts.bold,
-    },
-    cardInfo: {
-        flex: 1,
-    },
-    nombre: { 
-        fontSize: 18, 
-        color: theme.colors.text,
-        fontFamily: theme.fonts.bold,
-        marginBottom: 4 
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 2
-    },
-    icon: {
-        width: 16,
-        marginRight: 4,
-        textAlign: 'center'
-    },
-    detalle: { 
-        fontSize: 14, 
-        color: theme.colors.textLight,
-        fontFamily: theme.fonts.regular 
-    },
+    avatarText: { fontSize: 18, color: theme.colors.primary, fontFamily: theme.fonts.bold },
+    cardInfo: { flex: 1 },
+    nombre: { fontSize: 16, color: theme.colors.text, fontFamily: theme.fonts.bold, marginBottom: 4 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+    icon: { width: 16, marginRight: 4, textAlign: 'center' },
+    detalle: { fontSize: 13, color: theme.colors.textLight, fontFamily: theme.fonts.regular },
+    actions: { justifyContent: 'center', marginLeft: 8 },
+    actionBtn: { padding: 8, borderRadius: theme.radii.s },
     fab: {
         position: 'absolute',
-        bottom: 30,
-        right: 30,
-        width: 60,
-        height: 60,
+        bottom: 30, right: 30,
+        width: 60, height: 60,
         backgroundColor: theme.colors.cta,
         borderRadius: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'center', alignItems: 'center',
         elevation: 6,
         shadowColor: theme.colors.cta,
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOpacity: 0.3, shadowRadius: 8,
     }
 });
