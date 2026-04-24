@@ -1,20 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal, FlatList } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import apiClient from '../api/apiClient';
 import { theme } from '../constants/theme';
 import { FontAwesome5 } from '@expo/vector-icons';
 
-export default function NuevoTurnoScreen({ navigation, route }) {
-    const { onGoBack } = route.params || {};
-
+export default function NuevoTurnoScreen({ navigation }) {
     const [pacientes, setPacientes] = useState([]);
     const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
 
-    const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-    const [hora, setHora] = useState('09:00');
+    // Fecha/hora unificadas en un objeto Date
+    const [selectedDateTime, setSelectedDateTime] = useState(() => {
+        const d = new Date();
+        d.setHours(d.getHours() + 1, 0, 0, 0); // default: 1 hora desde ahora
+        return d;
+    });
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+
     const [motivo, setMotivo] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // ── Helpers de formato ──────────────────────────────────────────
+    const fmtDate = (d) => d.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
+    const fmtTime = (d) => d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const toISODate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const toISOTime = (d) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 
     useEffect(() => {
         cargarPacientes();
@@ -30,14 +42,13 @@ export default function NuevoTurnoScreen({ navigation, route }) {
     };
 
     const handleGuardar = async () => {
-        if (!pacienteSeleccionado || !fecha || !hora || !motivo) {
+        if (!pacienteSeleccionado || !motivo) {
             return Alert.alert('Aviso', 'Por favor, completá todos los campos y selecciona un paciente.');
         }
 
         // Validar que el turno no sea en el pasado
-        const fechaHoraFormat = `${fecha}T${hora}:00`;
-        const fechaHoraTurno = new Date(fechaHoraFormat);
-        if (fechaHoraTurno <= new Date()) {
+        const fechaHoraFormat = `${toISODate(selectedDateTime)}T${toISOTime(selectedDateTime)}:00`;
+        if (selectedDateTime <= new Date()) {
             return Alert.alert(
                 'Horario inválido',
                 'No podés agendar turnos para un horario que ya pasó. Seleccioná una hora futura.'
@@ -58,6 +69,30 @@ export default function NuevoTurnoScreen({ navigation, route }) {
             Alert.alert('Error', 'No se pudo crear el turno.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const onChangeDate = (event, date) => {
+        setShowDatePicker(false);
+        if (date) {
+            setSelectedDateTime(prev => {
+                const next = new Date(prev);
+                next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                return next;
+            });
+            // En Android abrimos el picker de hora a continuación
+            if (Platform.OS === 'android') setShowTimePicker(true);
+        }
+    };
+
+    const onChangeTime = (event, date) => {
+        setShowTimePicker(false);
+        if (date) {
+            setSelectedDateTime(prev => {
+                const next = new Date(prev);
+                next.setHours(date.getHours(), date.getMinutes());
+                return next;
+            });
         }
     };
 
@@ -91,33 +126,56 @@ export default function NuevoTurnoScreen({ navigation, route }) {
                         <FontAwesome5 name="chevron-down" size={14} color={theme.colors.border} />
                     </TouchableOpacity>
 
-                    <Text style={styles.sectionTitle}>Detalles de la Cita</Text>
+                    <Text style={styles.sectionTitle}>Fecha y Hora</Text>
 
-                    <View style={styles.row}>
-                        <View style={[styles.inputContainer, { flex: 1, marginRight: theme.spacing.s }]}>
-                            <FontAwesome5 name="calendar-alt" size={16} color={theme.colors.primary} style={styles.inputIcon} />
-                            <TextInput 
-                                style={styles.input} 
-                                placeholder="YYYY-MM-DD" 
-                                placeholderTextColor={theme.colors.textLight}
-                                value={fecha} 
-                                onChangeText={setFecha} 
-                                editable={!loading}
-                            />
+                    {/* Botón Fecha */}
+                    <TouchableOpacity
+                        style={styles.pickerBtn}
+                        onPress={() => setShowDatePicker(true)}
+                        disabled={loading}
+                    >
+                        <FontAwesome5 name="calendar-alt" size={16} color={theme.colors.primary} style={styles.inputIcon} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.pickerLabel}>Fecha</Text>
+                            <Text style={styles.pickerValue}>{fmtDate(selectedDateTime)}</Text>
                         </View>
+                        <FontAwesome5 name="chevron-right" size={12} color={theme.colors.border} />
+                    </TouchableOpacity>
 
-                        <View style={[styles.inputContainer, { flex: 1, marginLeft: theme.spacing.s }]}>
-                            <FontAwesome5 name="clock" size={16} color={theme.colors.primary} style={styles.inputIcon} />
-                            <TextInput 
-                                style={styles.input} 
-                                placeholder="HH:MM" 
-                                placeholderTextColor={theme.colors.textLight}
-                                value={hora} 
-                                onChangeText={setHora} 
-                                editable={!loading}
-                            />
+                    {/* Botón Hora */}
+                    <TouchableOpacity
+                        style={styles.pickerBtn}
+                        onPress={() => setShowTimePicker(true)}
+                        disabled={loading}
+                    >
+                        <FontAwesome5 name="clock" size={16} color={theme.colors.primary} style={styles.inputIcon} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.pickerLabel}>Hora</Text>
+                            <Text style={styles.pickerValue}>{fmtTime(selectedDateTime)}</Text>
                         </View>
-                    </View>
+                        <FontAwesome5 name="chevron-right" size={12} color={theme.colors.border} />
+                    </TouchableOpacity>
+
+                    {/* DateTimePickers — en iOS se muestran inline, en Android como dialog */}
+                    {showDatePicker && (
+                        <DateTimePicker
+                            value={selectedDateTime}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                            minimumDate={new Date()}
+                            onChange={onChangeDate}
+                            locale="es-AR"
+                        />
+                    )}
+                    {showTimePicker && (
+                        <DateTimePicker
+                            value={selectedDateTime}
+                            mode="time"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            is24Hour
+                            onChange={onChangeTime}
+                        />
+                    )}
 
                     <View style={[styles.inputContainer, styles.textAreaContainer]}>
                         <FontAwesome5 name="notes-medical" size={16} color={theme.colors.primary} style={[styles.inputIcon, { marginTop: 16 }]} />
@@ -195,9 +253,7 @@ export default function NuevoTurnoScreen({ navigation, route }) {
                             style={styles.nuevoPacienteBtn}
                             onPress={() => {
                                 setModalVisible(false);
-                                navigation.navigate('NuevoPaciente', { 
-                                    onGoBack: cargarPacientes 
-                                });
+                                navigation.navigate('NuevoPaciente');
                             }}
                         >
                             <FontAwesome5 name="user-plus" size={16} color={theme.colors.cta} />
@@ -261,6 +317,31 @@ const styles = StyleSheet.create({
         color: theme.colors.text,
         fontFamily: theme.fonts.medium,
         fontSize: 16,
+    },
+    pickerBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.colors.background,
+        borderWidth: 1.5,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radii.m,
+        paddingHorizontal: theme.spacing.m,
+        paddingVertical: 12,
+        marginBottom: theme.spacing.m,
+        minHeight: 56,
+    },
+    pickerLabel: {
+        fontSize: 11,
+        color: theme.colors.textLight,
+        fontFamily: theme.fonts.medium,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    pickerValue: {
+        fontSize: 15,
+        color: theme.colors.text,
+        fontFamily: theme.fonts.bold,
     },
     inputContainer: {
         flexDirection: 'row',

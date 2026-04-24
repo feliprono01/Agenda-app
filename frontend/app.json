@@ -29,7 +29,8 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "apiUrl": "http://192.168.0.85:8080/api"
