@@ -41,8 +41,27 @@ public class WhatsAppService {
     public boolean enviarRecordatorio(Turno turno) {
         String url = apiUrl + "/" + phoneNumberId + "/messages";
 
-        // Limpiamos la cadena para que no tenga '+', guiones ni espacios.
-        String telefono = turno.getPaciente().getTelefono().replaceAll("[^\\d]", "");
+        // 1. Quitar todo lo que no sea dígito
+        String digits = turno.getPaciente().getTelefono().replaceAll("[^\\d]", "");
+
+        // 2. Normalizar a formato internacional argentino (sin +)
+        //    Casos: "3424787555" (10 dig) → "5493424787555"
+        //           "03424787555" (11 dig, 0 local) → "5493424787555"
+        //           "543424787555" (12 dig, sin 9 de celular) → "5493424787555"
+        //           "5493424787555" (13 dig, correcto) → sin cambio
+        String telefono;
+        if (digits.startsWith("549") && digits.length() == 13) {
+            telefono = digits; // ya está completo
+        } else if (digits.startsWith("54") && digits.length() == 12) {
+            telefono = "549" + digits.substring(2); // falta el 9 de celular
+        } else if (digits.startsWith("0") && digits.length() == 11) {
+            telefono = "549" + digits.substring(1); // quitar el 0 y agregar 549
+        } else if (digits.length() == 10) {
+            telefono = "549" + digits; // número local sin código
+        } else {
+            telefono = digits; // otros casos: dejar como está
+        }
+
         String nombre = turno.getPaciente().getNombre();
         String fecha = turno.getFechaHora().toLocalDate()
                 .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
