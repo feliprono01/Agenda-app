@@ -58,6 +58,7 @@ export default function DetalleTurnoScreen({ route, navigation }) {
                             setTurno(prev => ({ ...prev, estado: 'CANCELADO' }));
                         } catch (e) {
                             Alert.alert('Error', 'No se pudo cancelar el turno.');
+                        } finally {
                             setLoading(false);
                         }
                     }
